@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 import 'dart:async';
 
-// revoir comment faire des pas à l'interieur ou exté...
-//comment analyser les pas
 
 void main() => runApp(MyApp());
 
