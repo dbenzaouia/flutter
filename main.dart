@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_app/models/stepsModel.dart';
+import 'package:flutter_app/database.dart';
+import 'package:flutter_app/stepsManager.dart';
 
 
-void main() => runApp(MyApp());
+
+// revoir comment faire des pas à l'interieur ou exté...
+//comment analyser les pas
+void main(){
+  //DBProvider dbProvider = DBProvider.db;
+  //StepsManager stepsManager;
+  runApp(MyApp());
+}
+
+  
+ 
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -18,25 +34,9 @@ class MyApp extends StatelessWidget {
     );
   }
   
+  
 }
-class SecondRoute extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Second Page"),
-      ),
-      body: Center(
-        child: RaisedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: Text('Go back!'),
-        ),
-      ),
-    );
-  }
-}
+
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
@@ -50,12 +50,50 @@ class _MyHomePageState extends State<MyHomePage> {
   Pedometer _pedometer;
   StreamSubscription<int> _subscription;
   String _stepCountValue = 'unknown';
+  DBProvider dbProvider = DBProvider.db;
+  int value = 0;
+
+  bool resetCounterPressed = false;
+  String timeToDisplay = "00:00:00";
+  var swatch = Stopwatch();
+  final dur = Duration(seconds: 1);
+  var now = DateTime.now();
 
   List<StreamSubscription<dynamic>> _streamSubscriptions =
       <StreamSubscription<dynamic>>[];
+
+  void starttimer(){
+    Timer(dur, keeprunning);
+  }
+  void keeprunning(){
+    if(swatch.isRunning){
+      starttimer();
+    }
+    setState(() {
+      timeToDisplay = swatch.elapsed.inHours.toString().padLeft(2,"0") + ":"
+                      + (swatch.elapsed.inMinutes%60).toString().padLeft(2,"0") + ":"
+                      + (swatch.elapsed.inSeconds%60).toString().padLeft(2,"0");
+    });
+  }
+  
+  Widget stopWatch(){
+    return Container(
+      child: Column(
+        children:<Widget>[
+          Container(
+            alignment: Alignment.center,
+            child: Text(timeToDisplay,
+                  style: TextStyle(fontSize: 20.0),
+                  ),
+          ),
+        ]
+      ),
+    );
+
+  }
   @override
   Widget build(BuildContext context) {
-    
+
     var scaffold = Scaffold(
       appBar: AppBar(
 
@@ -68,51 +106,92 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
-            Divider(),
-            Row( 
+            Column( 
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
               Icon(Icons.directions_walk),
               Padding(
                 padding: EdgeInsets.only(left: 8.0),
-                child: Text('Step counter: $_stepCountValue'),
-               ),                          
+                child: Text('Step counter: $resetTheCounter ex: $_stepCountValue'),
+               ), 
+               Divider(),
+               Text(DateTime.now().toString()),   
+               Text(now.toString()),                   
             ]
+            ),
+            stopWatch(),
+            RaisedButton(
+              onPressed: reset,
+              child: Text('reset'),
+              ),
+            RaisedButton(
+              onPressed: resetStepCounter,
+              child: Text('reset timer'),
             ),
           ],
         ),
         margin: const EdgeInsets.all(8.0),
-      ),
-      drawer: Drawer(
-        child: Text('this is a drawer',
-                      style: Theme.of(context).textTheme.headline6,),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.navigate_next),
-        onPressed: (){
-          Navigator.push(context, MaterialPageRoute(builder: (context) => SecondRoute()),);
-        },
-        ),
-      bottomNavigationBar: BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      child: Container(height: 50.0,),
-      color: Colors.red,
-    ),
-      
+      ), 
     );
     return scaffold;
   }
-  
+
+  void resetStepCounter() {
+    setState(() {
+      resetCounterPressed = false;
+
+    });
+    swatch.reset();
+    timeToDisplay = "00:00:00";
+  }
+   
+  _save() async{
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'my_int_key';
+    if ((swatch.elapsed.inSeconds%60)%10==0){
+      value = int.parse('$_stepCountValue');
+      prefs.setInt(key, value);
+      //StepsManager(dbProvider).addNewSteps(step);
+      //reset();
+     // _subscription.resume();
+
+    }
+    
+    print('saved $value');
+  }
+
+ int get resetTheCounter  { 
+   _save();
+   
+   if ((swatch.elapsed.inSeconds%60)%10==0){
+   var step = new Steps(
+        //id: null,
+        numberSteps: int.parse('$_stepCountValue')-value,
+        theTime: timeToDisplay,
+      );
+
+      if(step.numberSteps != 0){
+              StepsManager(dbProvider).addNewSteps(step);
+              print('id is ${step.id}');
+              print(step.theTime);
+              print('number of steps is : ${step.numberSteps}');
+              
+              
+      }
+   }
+    return int.parse('$_stepCountValue')-value;
+ 
+}
   void dispose() {
     super.dispose();
     for (StreamSubscription<dynamic> subscription in _streamSubscriptions) {
       subscription.cancel();
     }
   }
-    void initState() {
+  void initState() {
+    //initPlatformState();
     super.initState();
-    initPlatformState();
-    
+    startListening();
   }
 
   Future<void> initPlatformState() async {
@@ -132,13 +211,27 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _onData(int stepCountValue) async {
-    setState(() => _stepCountValue = "$stepCountValue");
+    setState(() {
+       _stepCountValue = "$stepCountValue";
+       swatch.start();
+       starttimer();
+    });
+  }
+  void reset() {
+    setState(() {
+      int stepCountValue = 0;
+      stepCountValue = 0;
+      _stepCountValue = "$stepCountValue";
+    });
   }
  
 
   void _onDone() => print("Finished pedometer tracking");
 
   void _onError(error) => print("Flutter Pedometer Error: $error");
+
+  
+
 
 
 }
