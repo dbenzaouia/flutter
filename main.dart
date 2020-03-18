@@ -51,13 +51,17 @@ class _MyHomePageState extends State<MyHomePage> {
   StreamSubscription<int> _subscription;
   String _stepCountValue = 'unknown';
   DBProvider dbProvider = DBProvider.db;
+  final dataBase = DBProvider();
   int value = 0;
+  List<Steps> steps = [];
+
 
   bool resetCounterPressed = false;
   String timeToDisplay = "00:00:00";
   var swatch = Stopwatch();
   final dur = Duration(seconds: 1);
   var now = DateTime.now();
+  
 
   List<StreamSubscription<dynamic>> _streamSubscriptions =
       <StreamSubscription<dynamic>>[];
@@ -93,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   @override
   Widget build(BuildContext context) {
-
+    
     var scaffold = Scaffold(
       appBar: AppBar(
 
@@ -120,6 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
             ]
             ),
             stopWatch(),
+            _buildStepList(steps),
             RaisedButton(
               onPressed: reset,
               child: Text('reset'),
@@ -160,23 +165,18 @@ class _MyHomePageState extends State<MyHomePage> {
     print('saved $value');
   }
 
- int get resetTheCounter  { 
+ int get resetTheCounter { 
    _save();
    
    if ((swatch.elapsed.inSeconds%60)%10==0){
    var step = new Steps(
-        //id: null,
+        id: null,
         numberSteps: int.parse('$_stepCountValue')-value,
         theTime: timeToDisplay,
       );
 
       if(step.numberSteps != 0){
-              StepsManager(dbProvider).addNewSteps(step);
-              print('id is ${step.id}');
-              print(step.theTime);
-              print('number of steps is : ${step.numberSteps}');
-              
-              
+              StepsManager(dbProvider).addNewSteps(step); 
       }
    }
     return int.parse('$_stepCountValue')-value;
@@ -192,6 +192,7 @@ class _MyHomePageState extends State<MyHomePage> {
     //initPlatformState();
     super.initState();
     startListening();
+    setupList();
   }
 
   Future<void> initPlatformState() async {
@@ -230,7 +231,54 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _onError(error) => print("Flutter Pedometer Error: $error");
 
-  
+  Widget _buildStepList(List<Steps> stepsList) {
+    return Expanded(
+      child: ListView.builder(
+        padding: EdgeInsets.all(5.0),
+        itemCount: stepsList.length,
+        itemBuilder: (BuildContext context, int index) {
+          return Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text('Id'),
+                    Text(stepsList[index].id.toString()),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text('time'),
+                    Text(stepsList[index].theTime),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text('nb of steps'),
+                    Text(stepsList[index].numberSteps.toString()),
+                  ],
+                ),
+              ),
+              
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+
+  void setupList() async{
+    var _steps = await dataBase.fetchAll();
+    print(_steps);
+    setState(() {
+      steps = _steps;
+    });
+  }
 
 
 

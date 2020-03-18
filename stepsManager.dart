@@ -10,8 +10,11 @@ class StepsManager{
   StepsManager(this.dbProvider);
   
   Future<void>addNewSteps(Steps steps) async{
-    print('here');
     return dbProvider.addNewSteps(steps); 
+  }
+  
+  Future<int>getIdSteps(int id) async{
+    return dbProvider.getStepsid(id);
   }
 
 }

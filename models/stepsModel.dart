@@ -20,7 +20,7 @@ class Steps {
   Steps({
     this.id,
     this.theTime,
-    this.numberSteps
+    this.numberSteps,
   });
 
   factory Steps.fromMap(Map<String, dynamic> json) => new Steps(

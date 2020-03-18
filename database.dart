@@ -11,6 +11,10 @@ class DBProvider {
   static final DBProvider db = DBProvider._();
 
   Database _database;
+  
+  factory DBProvider() {
+    return db;
+  }
 
   Future<Database> get database async {
     if (_database != null){
@@ -29,7 +33,7 @@ class DBProvider {
       await db.execute("CREATE TABLE Steps ("
           "id INTEGER PRIMARY KEY AUTOINCREMENT,"
           "numberSteps INTEGER,"
-          "theTime TEXT"
+          "theTime TEXT,"
           ")");
           print('database created!');
     });
@@ -59,5 +63,26 @@ class DBProvider {
     var res = await db.query("Steps", where: "id = ?", whereArgs: [id]);
     return res.isNotEmpty ? Steps.fromMap(res.first) : null;
   }
-  
+
+  Future<int> getStepsid(int id) async {
+    final db = await database;
+    var results = await db.rawQuery('SELECT id FROM Steps WHERE id = $id');
+
+    if (results.length > 0) {
+      return new Steps.fromMap(results.first).id;
+    }
+
+    return null;
+  }
+
+  Future<List<Steps>> fetchAll() async {
+    var steps = await database;
+    var res = await steps.query('steps');
+
+    if (res.isNotEmpty) {
+      var thesteps = res.map((stepMap) => Steps.fromMap(stepMap)).toList();
+      return thesteps;
+    }
+    return [];
+  }
   }
